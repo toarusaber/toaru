@@ -46,6 +46,24 @@
 .google.tt
 .google.vu
 .google.ws
+.akamaized.net
+.acg.tv
+.acgvideo.com
+.bstarstatic.com
+.bigfun.cn
+.biliapi.com
+.biliapi.net
+.bilibili.com
+.bilibili.tv
+.bilibiligame.net
+.biligame.com
+.biligame.net
+.bilivideo.com
+.bilivideo.cn
+.hdslb.com
+.mincdn.com
+.biligo.com
+.szbdyd.com
 
 !##############General List End#################
 
