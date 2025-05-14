@@ -19,6 +19,8 @@
     "use strict";
 
     const NetflixUpdater = {
+        subtitleMap: null,
+        subtitleTimer: null,
         animeTitleBase: "", // 存储总集名称（如动画名称）
         animeTitleEpisode: "", // 存储具体集数名称（如 S01E01）
         titleCache: {},
@@ -94,30 +96,50 @@
                 // 提取前两个字段作为 key（例如 "サマータイムレンダ S01E01"）
                 const titleKey = title.split(" ").slice(0, 2).join(" ");
 
-                console.log(`正在查询字幕标题键: ${titleKey}`);
+                console.log(`正在查询字幕标题animeTitleEpisode: ${titleKey}`);
 
                 // 远程字幕 JSON 映射表地址
                 const jsonUrl = "https://raw.githubusercontent.com/toarusaber/toaru/master/app/subtitles.json";
-                const jsonRes = await fetch(jsonUrl);
-                if (!jsonRes.ok) throw new Error(`字幕索引文件获取失败: HTTP ${jsonRes.status}`);
 
-                const subtitleMap = await jsonRes.json();
-                const subtitleUrl = subtitleMap[titleKey];
+                if (!this.subtitleMap) {
+                    const jsonRes = await fetch(jsonUrl);
+                    if (!jsonRes.ok) throw new Error(`字幕索引文件获取失败: HTTP ${jsonRes.status}`);
+                    this.subtitleMap = await jsonRes.json();
+                }
+
+                const subtitleUrl = this.subtitleMap[titleKey];
+
 
                 if (!subtitleUrl) {
                     throw new Error(`未找到字幕地址: ${titleKey}`);
                 }
 
-                console.log(`尝试从 URL 获取字幕: ${subtitleUrl}`);
+                console.log(`尝试从 URL 获取字幕animeTitleEpisode: ${subtitleUrl}`);
                 const response = await fetch(subtitleUrl);
                 if (!response.ok) throw new Error(`字幕文件获取失败: HTTP ${response.status}`);
 
                 const srtContent = await response.text();
+                console.log(`成功下载字幕标题animeTitleEpisode: ${titleKey}`);
 
                 // 使用 MutationObserver 确保元素加载后调用回调
-                this.observeElement('#lln-main-subs', () => {
-                    this.displaySubtitles(srtContent);
-                });
+                let attempts = 0;
+                const maxAttempts = 120; // 最多检查 120 次，每次间隔 500ms，约 1 分钟
+
+                const checkInterval = setInterval(() => {
+                    const lln = document.querySelector('#lln-main-subs');
+                    if (lln) {
+                        console.warn("animeTitleEpisode字幕容器 #lln-main-subs 在 1 分钟内出现，开始加载字幕。");
+                        clearInterval(checkInterval);
+                        this.displaySubtitles(srtContent);
+                    } else {
+                        attempts++;
+                        if (attempts >= maxAttempts) {
+                            clearInterval(checkInterval);
+                            console.warn("animeTitleEpisode字幕容器 #lln-main-subs 在 1 分钟内未出现，放弃加载字幕。");
+                        }
+                    }
+                }, 500);
+
             } catch (error) {
                 console.error("字幕获取失败:", error);
             }
@@ -252,22 +274,26 @@ if (!subtitleElem) {
 
             let currentIndex = 0;
 
-            setInterval(() => {
+            if (this.subtitleTimer) {
+                clearInterval(this.subtitleTimer);
+            }
+
+            this.subtitleTimer = setInterval(() => {
                 // 原始播放时间，单位为毫秒
                 const now = this.getPlayerTime();
                 const seconds = now / 1000; // 转换为秒
 
                 // 将时间格式化为 00:00:00,000 格式
-    const hours = String(Math.floor(seconds / 3600)).padStart(2, '0'); // 小时
-    const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0'); // 分钟
-    const sec = String(Math.floor(seconds % 60)).padStart(2, '0'); // 秒
-    const milliseconds = String(Math.floor((seconds % 1) * 1000)).padStart(3, '0'); // 毫秒
+                const hours = String(Math.floor(seconds / 3600)).padStart(2, '0'); // 小时
+                const minutes = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0'); // 分钟
+                const sec = String(Math.floor(seconds % 60)).padStart(2, '0'); // 秒
+                const milliseconds = String(Math.floor((seconds % 1) * 1000)).padStart(3, '0'); // 毫秒
 
-    // 更新 'misakitime' 元素的内容
-    const misakiTimeElem = document.getElementById('misakitime');
-    if (misakiTimeElem) {
-        misakiTimeElem.textContent = `${hours}:${minutes}:${sec},${milliseconds}`;
-    }
+                // 更新 'misakitime' 元素的内容
+                const misakiTimeElem = document.getElementById('misakitime');
+                if (misakiTimeElem) {
+                    misakiTimeElem.textContent = `${hours}:${minutes}:${sec},${milliseconds}`;
+                }
 
 
                 // 使用二分法查找当前时间的字幕索引
